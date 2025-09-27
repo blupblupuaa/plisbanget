@@ -197,6 +197,7 @@ function PHChart({
 }
 
 // TDS Chart Component
+// TDS Chart Component dengan fix precision
 function TDSChart({
   data,
   isLoading,
@@ -217,7 +218,8 @@ function TDSChart({
       .filter((reading) => new Date(reading.timestamp) >= cutoff)
       .map((reading) => ({
         timestamp: reading.timestamp,
-        tdsLevel: reading.tdsLevel,
+        // Fix: Bulatkan nilai TDS dengan 2 desimal
+        tdsLevel: Math.round(reading.tdsLevel * 100) / 100,
         time: format(new Date(reading.timestamp), "HH:mm"),
       }))
       .reverse();
@@ -257,7 +259,13 @@ function TDSChart({
                   tickMargin={8}
                   height={40}
                 />
-                <YAxis stroke="#64748b" fontSize={10} width={40} />
+                <YAxis 
+                  stroke="#64748b" 
+                  fontSize={10} 
+                  width={40}
+                  // Fix: Format Y-axis untuk menampilkan bilangan bulat
+                  tickFormatter={(value) => Math.round(value).toString()}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "white",
@@ -266,8 +274,9 @@ function TDSChart({
                     boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                   }}
                   labelFormatter={(label) => `Time: ${label}`}
+                  // Fix: Tampilkan nilai yang sudah dibulatkan
                   formatter={(value: number) => [
-                    `${value.toFixed(0)} ppm`,
+                    `${Math.round(value)} ppm`,
                     "TDS Level",
                   ]}
                 />
@@ -314,7 +323,7 @@ export default function SeparateSensorCharts({
       </div>
 
       {/* Separate Charts */}
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="flex flex-col gap-6">
         <TemperatureChart data={data} isLoading={isLoading} range={range} />
         <PHChart data={data} isLoading={isLoading} range={range} />
         <TDSChart data={data} isLoading={isLoading} range={range} />
