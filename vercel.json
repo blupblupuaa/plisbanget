@@ -21,6 +21,13 @@
       "maxDuration": 10
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/sync-antares",
+      "schedule": "0 */6 * * *",
+      "_comment": "Backup cron - runs every 6 hours. Primary cron is GitHub Actions (every 10 min)"
+    }
+  ],
   "env": {
     "NODE_ENV": "production"
   }
