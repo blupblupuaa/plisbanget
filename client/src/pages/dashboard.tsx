@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { syncAntaresData } from "@/lib/api";
 import type { SensorReading, SystemStatus } from "@shared/schema";
 
-// Unified display type - FIXED: createdAt is now required
+// Unified display type - FIXED: createdAt is now require
 interface DisplaySensorReading {
   id: string;
   timestamp: string;
