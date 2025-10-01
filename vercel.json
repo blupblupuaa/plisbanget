@@ -2,12 +2,12 @@
   "version": 2,
   "buildCommand": "npm run build",
   "installCommand": "npm install",
-  "framework": null,
-  "outputDirectory": "dist/public",
+  "framework": "vite",
+  "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
     {
       "source": "/(.*)",
@@ -24,11 +24,7 @@
   "crons": [
     {
       "path": "/api/cron/sync-antares",
-      "schedule": "0 */6 * * *",
-      "_comment": "Backup cron - runs every 6 hours. Primary cron is GitHub Actions (every 10 min)"
+      "schedule": "0 */6 * * *"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
