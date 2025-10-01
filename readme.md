@@ -526,3 +526,121 @@ plisss
 └─ vite.config.ts
 
 ```
+```
+plisss
+├─ api
+│  ├─ alert-settings.ts
+│  ├─ cron
+│  │  └─ sync-antares.ts
+│  ├─ export-data.ts
+│  ├─ sensor-reading
+│  │  ├─ latest.ts
+│  │  └─ range.ts
+│  ├─ sensor-reading.ts
+│  ├─ sync-antares.ts
+│  └─ system-status.ts
+├─ attached_assets
+│  └─ Pasted--usr-bin-env-python3-Test-Script-untuk-Koneksi-Antares-IoT-Platform-FIXED-VERSION-Hydropo-1754295971409_1754295971412.txt
+├─ checklist.md
+├─ client
+│  ├─ index.html
+│  └─ src
+│     ├─ App.tsx
+│     ├─ components
+│     │  ├─ multi-metric-chart.tsx
+│     │  ├─ ph-chart.tsx
+│     │  ├─ recent-readings.tsx
+│     │  ├─ status-card.tsx
+│     │  ├─ system-info.tsx
+│     │  ├─ tds-chart.tsx
+│     │  ├─ temperature-chart.tsx
+│     │  └─ ui
+│     │     ├─ accordion.tsx
+│     │     ├─ alert-dialog.tsx
+│     │     ├─ alert.tsx
+│     │     ├─ aspect-ratio.tsx
+│     │     ├─ avatar.tsx
+│     │     ├─ badge.tsx
+│     │     ├─ breadcrumb.tsx
+│     │     ├─ button.tsx
+│     │     ├─ calendar.tsx
+│     │     ├─ card.tsx
+│     │     ├─ carousel.tsx
+│     │     ├─ chart.tsx
+│     │     ├─ checkbox.tsx
+│     │     ├─ collapsible.tsx
+│     │     ├─ command.tsx
+│     │     ├─ context-menu.tsx
+│     │     ├─ dialog.tsx
+│     │     ├─ drawer.tsx
+│     │     ├─ dropdown-menu.tsx
+│     │     ├─ form.tsx
+│     │     ├─ hover-card.tsx
+│     │     ├─ input-otp.tsx
+│     │     ├─ input.tsx
+│     │     ├─ label.tsx
+│     │     ├─ menubar.tsx
+│     │     ├─ navigation-menu.tsx
+│     │     ├─ pagination.tsx
+│     │     ├─ popover.tsx
+│     │     ├─ progress.tsx
+│     │     ├─ radio-group.tsx
+│     │     ├─ resizable.tsx
+│     │     ├─ scroll-area.tsx
+│     │     ├─ select.tsx
+│     │     ├─ separator.tsx
+│     │     ├─ sheet.tsx
+│     │     ├─ sidebar.tsx
+│     │     ├─ skeleton.tsx
+│     │     ├─ slider.tsx
+│     │     ├─ switch.tsx
+│     │     ├─ table.tsx
+│     │     ├─ tabs.tsx
+│     │     ├─ textarea.tsx
+│     │     ├─ toast.tsx
+│     │     ├─ toaster.tsx
+│     │     ├─ toggle-group.tsx
+│     │     ├─ toggle.tsx
+│     │     └─ tooltip.tsx
+│     ├─ hooks
+│     │  ├─ use-mobile.tsx
+│     │  └─ use-toast.ts
+│     ├─ index.css
+│     ├─ lib
+│     │  ├─ api.ts
+│     │  ├─ queryClient.ts
+│     │  └─ utils.ts
+│     ├─ main.tsx
+│     └─ pages
+│        ├─ dashboard.tsx
+│        └─ not-found.tsx
+├─ components.json
+├─ deployment.md
+├─ drizzle.config.ts
+├─ package-lock.json
+├─ package.json
+├─ postcss.config.js
+├─ quickstart.md
+├─ README-VSCODE.md
+├─ readme.md
+├─ replit.md
+├─ scripts
+│  └─ seed-database.ts
+├─ server
+│  ├─ db.ts
+│  ├─ index.ts
+│  ├─ routes.ts
+│  ├─ schema.ts
+│  ├─ services
+│  │  └─ antares.ts
+│  ├─ storage.ts
+│  └─ vite.ts
+├─ SETUP-GITHUB-ACTIONS.md
+├─ shared
+│  └─ schema.ts
+├─ tailwind.config.ts
+├─ tsconfig.json
+├─ vercel.json
+└─ vite.config.ts
+
+```
