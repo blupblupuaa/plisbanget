@@ -12,14 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { syncAntaresData } from "@/lib/api";
 import type { SensorReading, SystemStatus } from "@shared/schema";
 
-// Unified display type
+// Unified display type - FIXED: createdAt is now required
 interface DisplaySensorReading {
   id: string;
   timestamp: string;
   temperature: number;
   ph: number;
   tdsLevel: number;
-  createdAt?: string;
+  createdAt: string; // Changed from optional to required
   deviceId?: string;
 }
 
@@ -312,17 +312,19 @@ export default function Dashboard() {
           temperature: data.temperature,
           ph: dataGenerator.generatePH(new Date(data.timestamp)),
           tdsLevel: dataGenerator.generateTDS(new Date(data.timestamp)),
-          createdAt: "createdAt" in data ? data.createdAt : undefined,
+          createdAt: data.createdAt || data.timestamp, // FIXED: Provide fallback
           deviceId: "deviceId" in data ? data.deviceId : undefined,
         };
       } else if (typeof window !== "undefined") {
         const now = new Date();
+        const nowISO = now.toISOString();
         return {
           id: "simulated",
-          timestamp: now.toISOString(),
+          timestamp: nowISO,
           temperature: dataGenerator.generateTemperature(now),
           ph: dataGenerator.generatePH(now),
           tdsLevel: dataGenerator.generateTDS(now),
+          createdAt: nowISO, // FIXED: Always provide createdAt
           deviceId: "simulator",
         };
       }
@@ -343,7 +345,7 @@ export default function Dashboard() {
         temperature: reading.temperature,
         ph: dataGenerator.generatePH(new Date(reading.timestamp)),
         tdsLevel: dataGenerator.generateTDS(new Date(reading.timestamp)),
-        createdAt: reading.createdAt,
+        createdAt: reading.createdAt || reading.timestamp, // FIXED: Provide fallback
       }));
     } else {
       const simulatedData: DisplaySensorReading[] = [];
@@ -351,12 +353,14 @@ export default function Dashboard() {
 
       for (let i = 144; i >= 0; i--) {
         const timestamp = new Date(now.getTime() - i * 10 * 60 * 1000);
+        const timestampISO = timestamp.toISOString();
         simulatedData.push({
           id: `sim-${i}`,
-          timestamp: timestamp.toISOString(),
+          timestamp: timestampISO,
           temperature: dataGenerator.generateTemperature(timestamp),
           ph: dataGenerator.generatePH(timestamp),
           tdsLevel: dataGenerator.generateTDS(timestamp),
+          createdAt: timestampISO, // FIXED: Always provide createdAt
           deviceId: "simulator",
         });
       }
