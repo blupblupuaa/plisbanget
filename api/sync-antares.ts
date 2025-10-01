@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "../server/db";
+import { db } from "./_lib/db";
 import { sensorReadings, systemStatus } from "../server/schema";
 import { antaresService } from "../server/services/antares";
 import { eq } from "drizzle-orm";

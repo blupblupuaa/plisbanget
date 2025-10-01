@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "../server/db";
+import { db } from "./_lib/db";
 import { sensorReadings } from "../server/schema";
 import { and, gte, lte, desc } from "drizzle-orm";
 

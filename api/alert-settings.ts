@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "../server/db";
+import { db } from "./_lib/db";
 import { alertSettings } from "../server/schema";
 import { eq } from "drizzle-orm";
 import { insertAlertSettingsSchema } from "@shared/schema";
