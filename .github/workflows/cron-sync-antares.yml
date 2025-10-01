@@ -1,0 +1,45 @@
+name: Sync Antares Data
+
+on:
+  schedule:
+    # Setiap 15 menit (sesuaikan dengan kebutuhan)
+    - cron: "*/15 * * * *"
+
+    # Contoh jadwal lain (uncomment yang diperlukan):
+    # - cron: '0 */1 * * *'    # Setiap jam
+    # - cron: '*/5 * * * *'    # Setiap 5 menit
+    # - cron: '0 */6 * * *'    # Setiap 6 jam
+
+  # Bisa trigger manual dari GitHub UI
+  workflow_dispatch:
+
+jobs:
+  sync-antares:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Sync Antares Endpoint
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            https://your-app.vercel.app/api/cron/sync-antares \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+
+          if [ $http_code -ne 200 ]; then
+            echo "❌ Sync failed with status $http_code"
+            exit 1
+          fi
+
+          echo "✅ Sync successful"
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "⚠️ Cron job failed! Check the logs above."
+          # Tambahkan notifikasi ke Discord/Telegram jika perlu
