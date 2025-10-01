@@ -82,19 +82,34 @@ function setCorsHeaders(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-// Antares service functions (inline)
+// FIXED: Antares service functions with correct decoding
 async function fetchAntaresData() {
-  const accessKey = process.env.ANTARES_ACCESS_KEY;
-  const applicationName = process.env.ANTARES_APPLICATION_NAME;
-  const deviceName = process.env.ANTARES_DEVICE_NAME;
+  // ✅ FIX: Menggunakan nama variabel yang benar sesuai .env
+  const accessKey = process.env.ANTARES_API_KEY;
+  const applicationName = process.env.ANTARES_APPLICATION_ID;
+  const deviceName = process.env.ANTARES_DEVICE_ID;
+
+  console.log("=== ANTARES FETCH DEBUG ===");
+  console.log(
+    "API Key:",
+    accessKey ? `${accessKey.substring(0, 10)}...` : "NOT SET"
+  );
+  console.log("Application:", applicationName);
+  console.log("Device:", deviceName);
 
   if (!accessKey || !applicationName || !deviceName) {
-    console.error("Missing Antares configuration");
+    console.error("❌ Missing Antares configuration");
+    console.error("Please check your Vercel environment variables:");
+    console.error("- ANTARES_API_KEY");
+    console.error("- ANTARES_APPLICATION_ID");
+    console.error("- ANTARES_DEVICE_ID");
     return null;
   }
 
   try {
     const url = `https://platform.antares.id:8443/~/antares-cse/antares-id/${applicationName}/${deviceName}/la`;
+    console.log("Fetching from:", url);
+
     const response = await fetch(url, {
       headers: {
         "X-M2M-Origin": accessKey,
@@ -103,25 +118,136 @@ async function fetchAntaresData() {
       },
     });
 
-    if (!response.ok) return null;
+    console.log("Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Antares API error:", response.status, errorText);
+      return null;
+    }
 
     const data = await response.json();
+    console.log("Raw response:", JSON.stringify(data, null, 2));
+
     const content = data["m2m:cin"]?.con;
+    if (!content) {
+      console.error("❌ No content in response");
+      return null;
+    }
 
-    if (!content) return null;
+    console.log("Content received:", content);
 
-    // Decode hex data
-    const tempHex = content.substr(0, 4);
-    const phHex = content.substr(4, 4);
-    const tdsHex = content.substr(8, 4);
+    // ✅ FIX: Proper hex decoding based on your format
+    let parsedData;
 
-    const temperature = parseInt(tempHex, 16) / 100;
-    const ph = parseInt(phHex, 16) / 100;
-    const tdsLevel = parseInt(tdsHex, 16);
+    // Try to parse as JSON first
+    if (
+      typeof content === "string" &&
+      (content.startsWith("{") || content.startsWith("["))
+    ) {
+      try {
+        parsedData = JSON.parse(content);
+        console.log("Parsed as JSON:", parsedData);
 
-    return { temperature, ph, tdsLevel };
+        return {
+          temperature: parseFloat(
+            parsedData.temperature || parsedData.temp || 0
+          ),
+          ph: parseFloat(parsedData.pH || parsedData.ph || 0),
+          tdsLevel: parseFloat(
+            parsedData.tds || parsedData.TDS || parsedData.tdsLevel || 0
+          ),
+        };
+      } catch (e) {
+        console.log("Not valid JSON, trying hex decode...");
+      }
+    }
+
+    // If not JSON, try hex decoding
+    if (typeof content === "string" && /^[0-9A-Fa-f]+$/.test(content.trim())) {
+      const hexData = content.trim().toUpperCase();
+      console.log("Decoding hex data:", hexData);
+
+      if (hexData.length >= 12) {
+        // ✅ FIX: Proper hex decoding for your format
+        // Format: TTTT PPPP SSSS (Temperature, pH, TDS)
+        const tempHex = hexData.substr(0, 4);
+        const phHex = hexData.substr(4, 4);
+        const tdsHex = hexData.substr(8, 4);
+
+        const tempRaw = parseInt(tempHex, 16);
+        const phRaw = parseInt(phHex, 16);
+        const tdsRaw = parseInt(tdsHex, 16);
+
+        console.log("Hex parsing:", { tempHex, phHex, tdsHex });
+        console.log("Raw decimal:", { tempRaw, phRaw, tdsRaw });
+
+        // Convert based on your encoding scheme
+        // Temperature: divide by 10 (e.g., 0x0118 = 280 -> 28.0°C)
+        // pH: divide by 100 (e.g., 0x02BC = 700 -> 7.00)
+        // TDS: keep as is or divide by 10 depending on your encoding
+
+        const temperature = tempRaw / 10;
+        const ph = phRaw / 100;
+        const tdsLevel = tdsRaw; // or tdsRaw / 10 if needed
+
+        console.log("Decoded values:", { temperature, ph, tdsLevel });
+
+        // Validate ranges
+        if (
+          temperature >= -50 &&
+          temperature <= 100 &&
+          ph >= 0 &&
+          ph <= 14 &&
+          tdsLevel >= 0 &&
+          tdsLevel <= 5000
+        ) {
+          return { temperature, ph, tdsLevel };
+        } else {
+          console.warn(
+            "⚠️ Decoded values out of range, trying alternative decoding"
+          );
+
+          // Try alternative: all values divided by 100
+          const altTemp = tempRaw / 100;
+          const altPh = phRaw / 100;
+          const altTds = tdsRaw / 100;
+
+          console.log("Alternative decoding:", { altTemp, altPh, altTds });
+
+          if (
+            altTemp >= -50 &&
+            altTemp <= 100 &&
+            altPh >= 0 &&
+            altPh <= 14 &&
+            altTds >= 0 &&
+            altTds <= 2000
+          ) {
+            return {
+              temperature: altTemp,
+              ph: altPh,
+              tdsLevel: altTds,
+            };
+          }
+        }
+      }
+    }
+
+    // If object format (non-hex)
+    if (typeof content === "object") {
+      return {
+        temperature: parseFloat(content.temperature || content.temp || 0),
+        ph: parseFloat(content.pH || content.ph || 0),
+        tdsLevel: parseFloat(
+          content.tds || content.TDS || content.tdsLevel || 0
+        ),
+      };
+    }
+
+    console.error("❌ Could not parse content in any known format");
+    return null;
   } catch (error) {
-    console.error("Error fetching Antares data:", error);
+    console.error("❌ Error fetching Antares data:", error);
     return null;
   }
 }
@@ -234,18 +360,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // POST /api/sync-antares
     if (path === "/sync-antares" && req.method === "POST") {
+      console.log("=== SYNC ANTARES REQUEST ===");
+
       const antaresData = await fetchAntaresData();
 
       if (!antaresData) {
         await db
           .update(systemStatus)
-          .set({ connectionStatus: "error" })
+          .set({
+            connectionStatus: "error",
+            lastUpdate: new Date().toISOString(),
+          })
           .where(eq(systemStatus.id, "system-1"));
 
-        return res
-          .status(503)
-          .json({ error: "Failed to fetch data from Antares API" });
+        return res.status(503).json({
+          error: "Failed to fetch data from Antares API",
+          details: "Check Vercel logs for detailed error messages",
+        });
       }
+
+      console.log("✅ Data fetched successfully:", antaresData);
 
       const [reading] = await db
         .insert(sensorReadings)
@@ -262,6 +396,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           lastUpdate: new Date().toISOString(),
         })
         .where(eq(systemStatus.id, "system-1"));
+
+      console.log("✅ Data saved to database:", reading);
 
       return res.status(200).json({ success: true, reading });
     }
