@@ -9,11 +9,6 @@ export interface AntaresData {
   temperature: number;
   ph: number;
   tdsLevel: number;
-  // Optional additional fields for different device types
-  moisture?: number;
-  ec?: number;
-  humidity?: number;
-  light?: number;
 }
 
 export class AntaresService {
@@ -21,60 +16,102 @@ export class AntaresService {
 
   constructor(config: AntaresConfig) {
     this.config = {
-      baseUrl: 'https://platform.antares.id:8443/~/antares-cse/antares-id',
+      baseUrl: "https://platform.antares.id:8443/~/antares-cse/antares-id",
       ...config,
     };
   }
 
   /**
-   * Decode hex data based on device type
+   * ✅ CORRECT: Decode hex data dari ESP32
+   *
+   * Format: TTTT PPPP SSSS (12 hex chars)
+   * - TTTT = Temperature × 10 → divide by 10
+   * - PPPP = pH × 10 → divide by 10
+   * - SSSS = TDS (raw) → no division
+   *
+   * Contoh:
+   * - Input:  "010B004601F4"
+   * - Temp:   0x010B = 267 / 10 = 26.7°C
+   * - pH:     0x0046 = 70 / 10 = 7.0
+   * - TDS:    0x01F4 = 500 ppm
    */
-  private decodeHexData(hexString: string, deviceCode: string): AntaresData | null {
+  private decodeHexData(hexString: string): AntaresData | null {
     try {
-      // Remove any whitespace and ensure uppercase
-      const cleanHex = hexString.replace(/\s+/g, '').toUpperCase();
+      const cleanHex = hexString.replace(/\s+/g, "").toUpperCase();
 
-      if (deviceCode.startsWith('CZ')) {  // Cabai (4 sensors)
-        return {
-          ph: parseInt(cleanHex.substr(0, 4), 16) / 100,
-          moisture: parseInt(cleanHex.substr(4, 4), 16) / 10,
-          ec: parseInt(cleanHex.substr(8, 4), 16) / 100,
-          temperature: parseInt(cleanHex.substr(12, 4), 16) / 10,
-          tdsLevel: parseInt(cleanHex.substr(8, 4), 16) / 100, // Using EC as TDS equivalent
-        };
+      // Validate hex length
+      if (cleanHex.length < 12) {
+        console.error(`❌ Invalid hex length: ${cleanHex.length}, expected 12`);
+        return null;
       }
 
-      if (deviceCode.startsWith('MZ') || deviceCode.startsWith('SZ')) {  // Melon/Selada (3 sensors)
-        return {
-          ph: parseInt(cleanHex.substr(0, 4), 16) / 100,
-          ec: parseInt(cleanHex.substr(4, 4), 16) / 100,
-          temperature: parseInt(cleanHex.substr(8, 4), 16) / 10,
-          tdsLevel: parseInt(cleanHex.substr(4, 4), 16) / 100, // Using EC as TDS equivalent
-        };
+      // Extract hex parts (4 characters each)
+      const tempHex = cleanHex.substr(0, 4);
+      const phHex = cleanHex.substr(4, 4);
+      const tdsHex = cleanHex.substr(8, 4);
+
+      // Convert to decimal
+      const tempRaw = parseInt(tempHex, 16);
+      const phRaw = parseInt(phHex, 16);
+      const tdsRaw = parseInt(tdsHex, 16);
+
+      // Validate conversions
+      if (isNaN(tempRaw) || isNaN(phRaw) || isNaN(tdsRaw)) {
+        console.error("❌ Failed to parse hex values:", {
+          tempHex,
+          phHex,
+          tdsHex,
+        });
+        return null;
       }
 
-      if (deviceCode.startsWith('GZ')) {  // Greenhouse (3 sensors)
-        return {
-          temperature: parseInt(cleanHex.substr(0, 4), 16) / 10,
-          humidity: parseInt(cleanHex.substr(4, 4), 16) / 10,
-          light: parseInt(cleanHex.substr(8, 4), 16),
-          ph: 7.0, // Default pH for greenhouse sensors
-          tdsLevel: 0, // Default TDS for greenhouse sensors
-        };
+      // ✅ DECODE: Sesuai dengan ESP32 (multiply by 10)
+      const temperature = tempRaw / 10; // Divide by 10
+      const ph = phRaw / 10; // Divide by 10
+      const tdsLevel = tdsRaw; // No division
+
+      // Log untuk debugging
+      console.log("📊 Decoded sensor data:", {
+        input: cleanHex,
+        raw: {
+          tempHex: `0x${tempHex}`,
+          tempDec: tempRaw,
+          phHex: `0x${phHex}`,
+          phDec: phRaw,
+          tdsHex: `0x${tdsHex}`,
+          tdsDec: tdsRaw,
+        },
+        decoded: {
+          temperature: `${temperature}°C`,
+          ph: ph,
+          tdsLevel: `${tdsLevel} ppm`,
+        },
+      });
+
+      // Warning untuk nilai yang mencurigakan (sensor belum kalibrasi)
+      if (temperature < 0 || temperature > 60) {
+        console.warn(
+          `⚠️ Temperature out of normal range: ${temperature}°C (sensor not calibrated?)`
+        );
+      }
+      if (ph < 0 || ph > 14) {
+        console.warn(
+          `⚠️ pH out of valid range: ${ph} (sensor not calibrated?)`
+        );
+      }
+      if (tdsLevel < 0 || tdsLevel > 5000) {
+        console.warn(
+          `⚠️ TDS out of normal range: ${tdsLevel} ppm (sensor not calibrated?)`
+        );
       }
 
-      // Default decoding for your example format: temperature(4) + pH(4) + TDS(4)
-      if (cleanHex.length >= 12) {
-        return {
-          temperature: parseInt(cleanHex.substr(0, 4), 16) / 10,
-          ph: parseInt(cleanHex.substr(4, 4), 16) / 10,
-          tdsLevel: parseInt(cleanHex.substr(8, 4), 16) / 10,
-        };
-      }
-
-      return null;
+      return {
+        temperature: Math.round(temperature * 10) / 10, // 1 decimal place
+        ph: Math.round(ph * 100) / 100, // 2 decimal places
+        tdsLevel: Math.round(tdsLevel), // Integer
+      };
     } catch (error) {
-      console.error('Error decoding hex data:', error);
+      console.error("❌ Error decoding hex data:", error);
       return null;
     }
   }
@@ -87,94 +124,112 @@ export class AntaresService {
       let parsedContent;
 
       // Handle string content
-      if (typeof content === 'string') {
+      if (typeof content === "string") {
         try {
+          // Try to parse as JSON
           parsedContent = JSON.parse(content);
         } catch {
-          // If JSON parse fails, treat as plain string (might be hex)
-          parsedContent = { data: content };
+          // Not JSON, treat as raw hex string
+          console.log("📥 Content is raw hex string");
+          return this.decodeHexData(content);
         }
       } else {
         parsedContent = content;
       }
 
-      // Check if data is in hex format
-      if (parsedContent.data && typeof parsedContent.data === 'string') {
-        const hexData = parsedContent.data;
-        // Try to decode as hex data
-        const decodedData = this.decodeHexData(hexData, this.config.deviceId);
-        if (decodedData) {
-          return decodedData;
-        }
+      // Check for hex data in JSON format: {"data":"010B013907F3"}
+      if (parsedContent.data && typeof parsedContent.data === "string") {
+        console.log("📥 Found hex data in JSON format");
+        return this.decodeHexData(parsedContent.data);
       }
 
-      // Fallback to direct parsing (for backward compatibility)
-      return {
-        temperature: parseFloat(parsedContent.temperature) || 0,
-        ph: parseFloat(parsedContent.ph) || 0,
-        tdsLevel: parseFloat(parsedContent.tdsLevel) || parseFloat(parsedContent.waterLevel) || 0,
-      };
+      // Fallback: direct values (untuk backward compatibility)
+      if (parsedContent.temperature !== undefined) {
+        console.log("📥 Using direct values from JSON");
+        return {
+          temperature: parseFloat(parsedContent.temperature) || 0,
+          ph: parseFloat(parsedContent.ph) || 0,
+          tdsLevel:
+            parseFloat(parsedContent.tdsLevel || parsedContent.waterLevel) || 0,
+        };
+      }
 
+      console.error("❌ Unable to parse content structure:", parsedContent);
+      return null;
     } catch (error) {
-      console.error('Error parsing content:', error);
+      console.error("❌ Error parsing content:", error);
       return null;
     }
   }
 
+  /**
+   * Fetch latest data from Antares
+   */
   async fetchLatestData(): Promise<AntaresData | null> {
     try {
-      const response = await fetch(
-        `${this.config.baseUrl}/${this.config.applicationId}/${this.config.deviceId}/la`,
-        {
-          method: 'GET',
-          headers: {
-            'X-M2M-Origin': this.config.apiKey,
-            'Content-Type': 'application/json;ty=4',
-            'Accept': 'application/json',
-          },
-        }
-      );
+      const url = `${this.config.baseUrl}/${this.config.applicationId}/${this.config.deviceId}/la`;
+
+      console.log("📡 Fetching from Antares:", url);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "X-M2M-Origin": this.config.apiKey,
+          "Content-Type": "application/json;ty=4",
+          Accept: "application/json",
+        },
+      });
 
       if (!response.ok) {
-        throw new Error(`Antares API error: ${response.status} ${response.statusText}`);
+        console.error(
+          `❌ Antares API error: ${response.status} ${response.statusText}`
+        );
+        return null;
       }
 
       const data = await response.json();
+      console.log("📥 Antares response:", JSON.stringify(data, null, 2));
 
-      // Parse the Antares response format
-      const content = data['m2m:cin']?.con;
+      // Extract content from Antares response
+      const content = data["m2m:cin"]?.con;
       if (!content) {
-        throw new Error('Invalid response format from Antares API');
+        console.error("❌ Invalid response format - missing m2m:cin.con");
+        return null;
       }
 
-      return this.parseContent(content);
+      console.log("📦 Content to parse:", content);
 
+      return this.parseContent(content);
     } catch (error) {
-      console.error('Error fetching data from Antares:', error);
+      console.error("❌ Error fetching data from Antares:", error);
       return null;
     }
   }
 
+  /**
+   * Fetch historical data (optional)
+   */
   async fetchHistoricalData(limit = 100): Promise<AntaresData[]> {
     try {
-      const response = await fetch(
-        `${this.config.baseUrl}/${this.config.applicationId}/${this.config.deviceId}?rcn=4&lim=${limit}`,
-        {
-          method: 'GET',
-          headers: {
-            'X-M2M-Origin': this.config.apiKey,
-            'Content-Type': 'application/json;ty=4',
-            'Accept': 'application/json',
-          },
-        }
-      );
+      const url = `${this.config.baseUrl}/${this.config.applicationId}/${this.config.deviceId}?rcn=4&lim=${limit}`;
+
+      console.log("📡 Fetching historical data from Antares");
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          "X-M2M-Origin": this.config.apiKey,
+          "Content-Type": "application/json;ty=4",
+          Accept: "application/json",
+        },
+      });
 
       if (!response.ok) {
-        throw new Error(`Antares API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Antares API error: ${response.status}`);
       }
 
       const data = await response.json();
-      const contentInstances = data['m2m:cnt']?.['m2m:cin'] || [];
+      const contentInstances = data["m2m:cnt"]?.["m2m:cin"] || [];
 
       const historicalData: AntaresData[] = [];
 
@@ -187,29 +242,49 @@ export class AntaresService {
         }
       }
 
-      return historicalData.reverse(); // Reverse to get chronological order
-
+      return historicalData.reverse(); // Chronological order
     } catch (error) {
-      console.error('Error fetching historical data from Antares:', error);
+      console.error("❌ Error fetching historical data:", error);
       return [];
     }
   }
 
   /**
-   * Utility method to test hex decoding
+   * Test decode utility (untuk development/debugging)
    */
-  testDecode(hexString: string, deviceCode?: string): AntaresData | null {
-    return this.decodeHexData(hexString, deviceCode || this.config.deviceId);
+  testDecode(hexString: string): AntaresData | null {
+    console.log("\n🧪 ===== TEST DECODE =====");
+    console.log("Input:", hexString);
+    const result = this.decodeHexData(hexString);
+    console.log("Output:", result);
+    console.log("========================\n");
+    return result;
   }
 }
 
+// Initialize service with environment variables
 export const antaresService = new AntaresService({
-  apiKey: process.env.ANTARES_API_KEY || process.env.API_KEY || 'demo_key',
-  deviceId: process.env.ANTARES_DEVICE_ID || 'hydro_sensor',
-  applicationId: process.env.ANTARES_APPLICATION_ID || 'hydroponic_system',
+  apiKey: process.env.ANTARES_API_KEY || "",
+  deviceId: process.env.ANTARES_DEVICE_ID || "Monitoring_Hidroponik",
+  applicationId: process.env.ANTARES_APPLICATION_ID || "DRTPM-Hidroponik",
 });
 
-// Example usage:
-// const testData = antaresService.testDecode('FB0AF80B0002');
-// console.log(testData);
-// Expected output: { temperature: 251.0, ph: 27.92, tdsLevel: 248.1 }
+// Development tests
+if (process.env.NODE_ENV === "development") {
+  console.log("\n🧪 Running decoder tests...\n");
+
+  // Test 1: Data real Anda (sensor belum kalibrasi)
+  console.log("Test 1: Your actual data");
+  antaresService.testDecode("010B013907F3");
+  // Expected: temp=26.7°C, pH=31.3 (⚠️ invalid - not calibrated), TDS=2035
+
+  // Test 2: Data yang sudah dikalibrasi dengan benar
+  console.log("Test 2: Properly calibrated data");
+  antaresService.testDecode("010B004601F4");
+  // Expected: temp=26.7°C, pH=7.0, TDS=500
+
+  // Test 3: Edge case - nilai ekstrem
+  console.log("Test 3: Extreme values");
+  antaresService.testDecode("00000000FFFF");
+  // Expected: temp=0°C, pH=0, TDS=65535
+}
