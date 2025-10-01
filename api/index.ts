@@ -82,33 +82,19 @@ function setCorsHeaders(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-// ✅ FIX: Antares service dengan nama environment variable yang BENAR
+// Antares service functions (inline)
 async function fetchAntaresData() {
-  // ✅ GUNAKAN NAMA YANG SAMA DENGAN .env
   const accessKey = process.env.ANTARES_API_KEY;
   const applicationName = process.env.ANTARES_APPLICATION_ID;
   const deviceName = process.env.ANTARES_DEVICE_ID;
 
-  console.log("=== ANTARES FETCH DEBUG ===");
-  console.log(
-    "API Key:",
-    accessKey ? `${accessKey.substring(0, 10)}...` : "NOT SET"
-  );
-  console.log("Application:", applicationName);
-  console.log("Device:", deviceName);
-
   if (!accessKey || !applicationName || !deviceName) {
-    console.error("❌ Missing Antares configuration");
-    console.error(
-      "Required env vars: ANTARES_API_KEY, ANTARES_APPLICATION_ID, ANTARES_DEVICE_ID"
-    );
+    console.error("Missing Antares configuration");
     return null;
   }
 
   try {
     const url = `https://platform.antares.id:8443/~/antares-cse/antares-id/${applicationName}/${deviceName}/la`;
-    console.log("Fetching from:", url);
-
     const response = await fetch(url, {
       headers: {
         "X-M2M-Origin": accessKey,
@@ -117,26 +103,14 @@ async function fetchAntaresData() {
       },
     });
 
-    console.log("Response status:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ Antares API error:", response.status, errorText);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     const content = data["m2m:cin"]?.con;
 
-    if (!content) {
-      console.error("❌ No content in response");
-      return null;
-    }
+    if (!content) return null;
 
-    console.log("Raw content:", content);
-
-    // ✅ MENGGUNAKAN DECODING YANG SUDAH BENAR (TIDAK DIUBAH)
-    // Decode hex data - format yang sudah Anda gunakan
+    // Decode hex data
     const tempHex = content.substr(0, 4);
     const phHex = content.substr(4, 4);
     const tdsHex = content.substr(8, 4);
@@ -145,11 +119,9 @@ async function fetchAntaresData() {
     const ph = parseInt(phHex, 16) / 100;
     const tdsLevel = parseInt(tdsHex, 16);
 
-    console.log("Decoded values:", { temperature, ph, tdsLevel });
-
     return { temperature, ph, tdsLevel };
   } catch (error) {
-    console.error("❌ Error fetching Antares data:", error);
+    console.error("Error fetching Antares data:", error);
     return null;
   }
 }
@@ -262,26 +234,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // POST /api/sync-antares
     if (path === "/sync-antares" && req.method === "POST") {
-      console.log("=== SYNC ANTARES REQUEST ===");
-
       const antaresData = await fetchAntaresData();
 
       if (!antaresData) {
         await db
           .update(systemStatus)
-          .set({
-            connectionStatus: "error",
-            lastUpdate: new Date().toISOString(),
-          })
+          .set({ connectionStatus: "error" })
           .where(eq(systemStatus.id, "system-1"));
 
-        return res.status(503).json({
-          error: "Failed to fetch data from Antares API",
-          details: "Check Vercel Function Logs for more information",
-        });
+        return res
+          .status(503)
+          .json({ error: "Failed to fetch data from Antares API" });
       }
-
-      console.log("✅ Data fetched successfully:", antaresData);
 
       const [reading] = await db
         .insert(sensorReadings)
@@ -298,8 +262,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           lastUpdate: new Date().toISOString(),
         })
         .where(eq(systemStatus.id, "system-1"));
-
-      console.log("✅ Data saved to database:", reading);
 
       return res.status(200).json({ success: true, reading });
     }
