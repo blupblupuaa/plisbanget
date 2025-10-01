@@ -12,14 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { syncAntaresData } from "@/lib/api";
 import type { SensorReading, SystemStatus } from "@shared/schema";
 
-// Unified display type - FIXED: createdAt is now require
+// Unified display type
 interface DisplaySensorReading {
   id: string;
   timestamp: string;
   temperature: number;
   ph: number;
   tdsLevel: number;
-  createdAt: string; // Changed from optional to required
+  createdAt: string;
   deviceId?: string;
 }
 
@@ -160,7 +160,7 @@ function RealTimeClock() {
   const [ntpOffset, setNTPOffset] = useState(0);
 
   const ntpSources = [
-    "http://worldtimeapi.org/api/timezone/Asia/Jakarta",
+    "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
     "https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta",
     "https://worldclockapi.com/api/json/utc/now",
   ];
@@ -196,15 +196,18 @@ function RealTimeClock() {
 
         setNTPOffset(offset);
         setIsNTPSynced(true);
+        console.log(`✅ NTP synced successfully with ${source}`);
         return;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
-        console.warn(`NTP sync failed with ${source}:`, errorMessage);
+        console.warn(`⚠️ NTP sync failed with ${source}:`, errorMessage);
         continue;
       }
     }
 
+    // Fallback jika semua NTP sources gagal
+    console.log("ℹ️ All NTP sources failed, using timezone fallback");
     const now = new Date();
     const jakartaTime = new Date(
       now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
@@ -309,10 +312,10 @@ export default function Dashboard() {
         return {
           id: data.id,
           timestamp: data.timestamp,
-          temperature: data.temperature,
+          temperature: data.temperature ?? 0, // ✅ NULL SAFETY
           ph: dataGenerator.generatePH(new Date(data.timestamp)),
           tdsLevel: dataGenerator.generateTDS(new Date(data.timestamp)),
-          createdAt: data.createdAt || data.timestamp, // FIXED: Provide fallback
+          createdAt: data.createdAt || data.timestamp,
           deviceId: "deviceId" in data ? data.deviceId : undefined,
         };
       } else if (typeof window !== "undefined") {
@@ -324,7 +327,7 @@ export default function Dashboard() {
           temperature: dataGenerator.generateTemperature(now),
           ph: dataGenerator.generatePH(now),
           tdsLevel: dataGenerator.generateTDS(now),
-          createdAt: nowISO, // FIXED: Always provide createdAt
+          createdAt: nowISO,
           deviceId: "simulator",
         };
       }
@@ -339,14 +342,24 @@ export default function Dashboard() {
 
   const getMixedReadings = (): DisplaySensorReading[] => {
     if (sensorReadings.length > 0) {
-      return sensorReadings.map((reading) => ({
-        id: reading.id,
-        timestamp: reading.timestamp,
-        temperature: reading.temperature,
-        ph: dataGenerator.generatePH(new Date(reading.timestamp)),
-        tdsLevel: dataGenerator.generateTDS(new Date(reading.timestamp)),
-        createdAt: reading.createdAt || reading.timestamp, // FIXED: Provide fallback
-      }));
+      return sensorReadings
+        .filter((reading) => {
+          // ✅ FILTER out null/invalid readings
+          return (
+            reading &&
+            typeof reading.temperature === "number" &&
+            !isNaN(reading.temperature) &&
+            reading.timestamp
+          );
+        })
+        .map((reading) => ({
+          id: reading.id,
+          timestamp: reading.timestamp,
+          temperature: reading.temperature ?? 0, // ✅ NULL SAFETY
+          ph: dataGenerator.generatePH(new Date(reading.timestamp)),
+          tdsLevel: dataGenerator.generateTDS(new Date(reading.timestamp)),
+          createdAt: reading.createdAt || reading.timestamp,
+        }));
     } else {
       const simulatedData: DisplaySensorReading[] = [];
       const now = new Date();
@@ -360,7 +373,7 @@ export default function Dashboard() {
           temperature: dataGenerator.generateTemperature(timestamp),
           ph: dataGenerator.generatePH(timestamp),
           tdsLevel: dataGenerator.generateTDS(timestamp),
-          createdAt: timestampISO, // FIXED: Always provide createdAt
+          createdAt: timestampISO,
           deviceId: "simulator",
         });
       }
