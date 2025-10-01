@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import { db } from "./_lib/db";
+import { db } from "../server/db";
 import { sensorReadings, systemStatus, alertSettings } from "../server/schema";
 
 dotenv.config();
