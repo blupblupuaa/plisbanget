@@ -1,8 +1,6 @@
 node_modules
 dist
 .DS_Store
-server/public
-vite.config.ts.*
 *.tar.gz
 
 # Environment variables
@@ -10,12 +8,8 @@ vite.config.ts.*
 .env.local
 .env.production
 
-# Drizzle
+# Drizzle migrations (tidak perlu di Vercel)
 drizzle/
-
-# Replit specific (tidak dipakai di Vercel)
-.replit
-.config/
 
 # Vercel
 .vercel

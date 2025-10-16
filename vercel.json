@@ -7,11 +7,5 @@
       "source": "/api/(.*)",
       "destination": "/api/index"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/sync-antares",
-      "schedule": "*/10 * * * *"
-    }
   ]
 }
