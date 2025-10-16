@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { pgTable, text, timestamp, real, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, real, timestamp, integer, boolean, uuid,} from "drizzle-orm/pg-core";
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 
 // ============================================
@@ -20,20 +20,33 @@ const db = drizzle({ client: pool });
 // ============================================
 // SCHEMA (inline untuk simplicity)
 // ============================================
-const sensorReadings = pgTable("sensor_readings", {
+export const sensorReadings = pgTable("sensor_readings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  timestamp: text("timestamp").notNull(),
+  timestamp: timestamp("timestamp", { mode: "string" }).notNull().defaultNow(),
   temperature: real("temperature").notNull(),
   ph: real("ph").notNull(),
   tdsLevel: real("tds_level").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
 });
 
-const systemStatus = pgTable("system_status", {
+export const systemStatus = pgTable("system_status", {
   id: text("id").primaryKey(),
-  connectionStatus: text("connection_status").notNull(),
-  lastUpdate: text("last_update").notNull(),
-  dataPoints: real("data_points").notNull().default(0),
+  connectionStatus: text("connection_status", {
+    enum: ["connected", "disconnected", "error"],
+  }).notNull(),
+  lastUpdate: timestamp("last_update", { mode: "string" }).notNull(),
+  dataPoints: integer("data_points").notNull().default(0),
+  cpuUsage: integer("cpu_usage").notNull().default(0),
+  memoryUsage: integer("memory_usage").notNull().default(0),
+  storageUsage: integer("storage_usage").notNull().default(0),
+  uptime: text("uptime").notNull().default("0d 0h 0m"),
+});
+
+export const alertSettings = pgTable("alert_settings", {
+  id: text("id").primaryKey(),
+  temperatureAlerts: boolean("temperature_alerts").notNull().default(true),
+  phAlerts: boolean("ph_alerts").notNull().default(true),
+  tdsLevelAlerts: boolean("tds_level_alerts").notNull().default(false),
 });
 
 // ============================================
