@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { updateAlertSettings } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
-import type { SystemStatus, AlertSettings } from "@shared/schema";
+import type { SystemStatus } from "@shared/schema";
 
 interface SystemInfoProps {
   systemStatus?: SystemStatus;
