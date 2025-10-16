@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Sprout, Clock } from "lucide-react";
 import StatusCard from "@/components/status-card";
-import TemperatureChart from "@/components/temperature-chart";
-import PHChart from "@/components/ph-chart";
-import TDSChart from "@/components/tds-chart";
+import SensorCharts from "@/components/charts";
 import RecentReadings from "@/components/recent-readings";
 import SystemInfo from "@/components/system-info";
 import { Button } from "@/components/ui/button";
@@ -515,9 +513,7 @@ export default function Dashboard() {
 
         <div className="space-y-6 mb-8">
           <div className="flex flex-col gap-6">
-            <TemperatureChart data={displayData} isLoading={readingsLoading} />
-            <PHChart data={displayData} isLoading={readingsLoading} />
-            <TDSChart data={displayData} isLoading={readingsLoading} />
+            <SensorCharts data={displayData} isLoading={readingsLoading} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

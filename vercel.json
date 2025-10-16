@@ -6,10 +6,12 @@
     {
       "source": "/api/(.*)",
       "destination": "/api/index"
-    },
+    }
+  ],
+  "crons": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "path": "/api/cron/sync-antares",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
